@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"errors"
 	"strconv"
+	"time"
 )
 
 const maxUint32 = 4294967295
@@ -76,8 +77,8 @@ func (o *AddressStack) Pop() (elem uint32, err error) {
 }
 
 func main() {
-
-	output, _ := os.Create("output.txt")
+	start := time.Now()
+	output, _ := os.Create("sandmark-output.txt")
 
 	var executionFinger uint32
 
@@ -108,6 +109,7 @@ func main() {
 
 			// cycle
 			for isRunning := true; isRunning; {
+				
 				program := arrays[0][executionFinger]
 				operator := program >> 28
 				
@@ -115,9 +117,8 @@ func main() {
 				registerB := (program & 0x3F) >> 3
 				registerC := (program & 0x7) // number & (2^nBits - 1)
 				
-				//fmt.Printf("%d  %d, %d, %d\n", operator, registerA, registerB, registerC)
-				//fmt.Println(len(programs))
 				executionFinger++
+
 				switch operator {
 				case 0: // conditionalMove
 					if registers[registerC] != 0 {
@@ -132,9 +133,7 @@ func main() {
 				case 4: // multiplication
 					registers[registerA] = uint32(math.Mod(float64(registers[registerB]*registers[registerC]), math.Pow(2, 32)))
 				case 5: // division
-					if registers[registerC] != 0 {
-						registers[registerA] = uint32(registers[registerB] / registers[registerC])
-					}
+					registers[registerA] = uint32(registers[registerB] / registers[registerC])
 				case 6: // notAnd
 					registers[registerA] = ^(registers[registerB] & registers[registerC])
 				case 7: // halt
@@ -154,8 +153,12 @@ func main() {
 					intStr, _ := strconv.ParseUint(input, 10, 32)
 					registers[registerC] = uint32(intStr)
 				case 12: // loadProgram
-					arr := arrays[registers[registerB]]
-					arrays[0] = arr
+					if registers[registerB] != 0 {
+						arr := arrays[registers[registerB]]
+						tmp := make([]uint32, len(arr))
+						copy(tmp, arr)
+						arrays[0] = tmp
+					}
 					executionFinger = registers[registerC]
 				case 13: // orthography
 					registers[((program >> 25) & 0x7)] = (program & 0x1FFFFFF)
@@ -163,4 +166,7 @@ func main() {
 			}	
 		}
 	}
+	fmt.Println("Start: ", start)
+	fmt.Println("End: ", time.Now())
+	fmt.Println("Duration: ", time.Since(start))
 }
